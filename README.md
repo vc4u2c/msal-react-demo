@@ -1,70 +1,83 @@
-# Getting Started with Create React App
+# MSALCreateReactDemo
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+- [Using MSAL.js to integrate React SPA with Azure AD](https://www.youtube.com/watch?v=7oPSL5wWeS0)
 
-## Available Scripts
+## Initial Setup
 
-In the project directory, you can run:
+```bash
+cd .\Documents\Source\Repos\React\
+git clone https://github.com/derisen/msal-react-demo.git
+code . -r
 
-### `npm start`
+# Install Dependencies
+npm i
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+# Start the application
+npm start
+#CTRL + C to end
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+# Install MSAL
+npm i --save @azure/msal-browser @azure/msal-react
+```
 
-### `npm test`
+## Azure Entra Id Setup
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
 
-### `npm run build`
+# Login to zure
+az login
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+# Set active subscription
+az account set --subscription "sub-vc4u2c-demo"
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+# Create Resource Group
+az group create --name rg-msalreactdemo-dev --location eastus
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+# Create Microsoft Entra Id Tenant
+$env:AZURE_SUBSCRIPTION=az account show --query "id" -o tsv
+$env:AZURE_RESOURCE_GROUP="rg-msalreactdemo-dev"
+$env:DOMAIN="b2cvc4u2cmsaldemodev"
+$env:LOCATION="eastus"
 
-### `npm run eject`
+az rest --method put --url https://management.azure.com/subscriptions/$env:AZURE_SUBSCRIPTION/resourceGroups/$env:AZURE_RESOURCE_GROUP/providers/Microsoft.AzureActiveDirectory/b2cDirectories/$env:DOMAIN.onmicrosoft.com?api-version=2021-04-01 --body "{'location': 'United States', 'sku': {'name': 'Standard', 'tier': 'A0'}, 'properties': {'createTenantProperties': {'displayName': 'b2c-vc4u2cmsaldemo-dev', 'countryCode': 'US'}}}" --verbose
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+# List the tenants
+az account tenant list
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+# Delete
+az rest --method delete --url https://management.azure.com/subscriptions/$env:AZURE_SUBSCRIPTION/resourceGroups/$env:AZURE_RESOURCE_GROUP/providers/Microsoft.AzureActiveDirectory/b2cDirectories/$env:DOMAIN.onmicrosoft.com?api-version=2021-04-01 --verbose
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+# Verify if B2C tenant was removed then remove the Resource Group
+az group delete --name $env:AZURE_RESOURCE_GROUP
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+# Login using the newly created
+az login --tenant b907d549-84e1-4733-b7be-d459594670c4
 
-## Learn More
+# Register a client application using CLI and REST API
+# https://learn.microsoft.com/en-us/azure/healthcare-apis/register-application-cli-rest
+az --version
+az extension add --name account
+az extension add --name healthcareapis
+az provider register --namespace 'Microsoft.HealthcareApis'
+az provider show --namespace Microsoft.HealthcareApis --query "resourceTypes[?resourceType=='services'].locations"
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+# Create the App registration
+az ad app create --display-name "appreg-msalreactdemo-dev" --reply-urls "http://localhost:3000" --available-to-other-tenants false --oauth2-allow-implicit-flow true
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+az account show --output table
 
-### Code Splitting
+#az ad app create --display-name myappregtest1
+# TODO: Without this step, we need to follow manual steps below
+# https://helloitsliam.com/2023/12/12/connecting-to-azure-using-azure-cli-with-an-app-registration-and-a-certificate/
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+az account show
 
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+# Switch to the tenant created
+# Create manually in Az Portal. Switch to the tenant created.
+# Add App Registration
+# Name: appreg-msalreactdemo-dev
+# Accounts in this organizational directory only (b2c-vc4u2cmsaldemo-dev only - Single tenant)
+# SPA, http://localhost:3000
+# Click Register
+# API Plate Delegate User.Read Permission from Microsoft.Graph
+```
